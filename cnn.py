@@ -1,9 +1,9 @@
 """
-Epoch: 1 Loss: 0.21745962 Accuracy: 0.93361664
-Epoch: 2 Loss: 0.09494804 Accuracy: 0.97066665
-Epoch: 3 Loss: 0.07050682 Accuracy: 0.97861665
-Epoch: 4 Loss: 0.055484433 Accuracy: 0.98263335
-Loss: 0.08945641 Accuracy: 0.9737
+Epoch: 1 Loss: 0.13553466 Accuracy: 0.95835
+Epoch: 2 Loss: 0.046032995 Accuracy: 0.98648334
+Epoch: 3 Loss: 0.034401655 Accuracy: 0.9902
+Epoch: 4 Loss: 0.025746321 Accuracy: 0.9928833
+Loss: 0.037153102 Accuracy: 0.9893
 """
 
 import tensorflow as tf
@@ -16,33 +16,62 @@ import numpy as np
 x_train = x_train.astype(np.float32)/255.0
 x_test = x_test.astype(np.float32)/255.0
 
-# Flatten layer and flat 28*28 images into vectors
-flatten = tf.keras.layers.Flatten()
-x_train = flatten(x_train)
-x_test = flatten(x_test)
+# Expand the dimension for CNN layer
+x_train = tf.expand_dims(x_train,-1)
+x_test = tf.expand_dims(x_test,-1)
 
 y_train = y_train.astype(np.float32)
 y_test = y_test.astype(np.float32)
 
-# Define batch size
+# Hyperparameters
 batch_size = 32
+epochs = 4
+rate = 0.001
 
 # Create tensorflow datasets
 train_datasets = tf.data.Dataset.from_tensor_slices(
     (x_train, y_train)
-).shuffle(len(x_train)).batch(batch_size) # len(x_train) only use the first shape of x_train 60000
+).shuffle(len(x_train)).batch(batch_size)
 
 test_datasets = tf.data.Dataset.from_tensor_slices(
     (x_test, y_test)
 ).batch(batch_size)
 
+# Define CNN layer
+conv32 = tf.keras.layers.Conv2D(
+    filters = 32,
+    kernel_size = 3,
+    activation = "relu",
+    padding = "same", # Keep the dimension the same
+    use_bias = True,
+) #(32,28,28,32)
+
+pool1 = tf.keras.layers.MaxPooling2D(
+    pool_size = 2
+) #(32,14,14,32)
+
+conv64 = tf.keras.layers.Conv2D(
+    filters = 64,
+    kernel_size = 3,
+    activation = "relu",
+    padding = "same",
+    use_bias = True,
+) #(32,14,14,64)
+
+pool2 = tf.keras.layers.MaxPooling2D(
+    pool_size = 2
+) #(32,7，7,64)
+
+# Flatten layer (32,7,7,64)-> (32,3136)
+flatten = tf.keras.layers.Flatten()
+
 # Initializer and parameters
 initializer = tf.keras.initializers.HeNormal(seed=1)
 
-w1 = tf.Variable(initializer(shape=(784,392)))
-b1 = tf.Variable(tf.zeros((392,)))
+w1 = tf.Variable(initializer(shape=(3136,784)))
+b1 = tf.Variable(tf.zeros((784,)))
 
-w2 = tf.Variable(initializer(shape=(392,196)))
+w2 = tf.Variable(initializer(shape=(784,196)))
 b2 = tf.Variable(tf.zeros((196,)))
 
 w3 = tf.Variable(initializer(shape=(196,98)))
@@ -56,6 +85,13 @@ b5 = tf.Variable(tf.zeros((10,)))
 
 # Forward propogation
 def forward(x):
+    x = conv32(x)
+    x = pool1(x)
+    x = conv64(x)
+    x = pool2(x)
+    
+    x = flatten(x)
+    
     z1 = tf.nn.relu(
         tf.matmul(x,w1)+b1
     )
@@ -82,15 +118,7 @@ def forward(x):
 loss_fn = tf.keras.losses.SparseCategoricalCrossentropy()
 
 # Optimizer
-optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-
-# Training
-epochs = 4
-
-training_variables = [
-    w1,w2,w3,w4,w5,
-    b1,b2,b3,b4,b5
-]
+optimizer = tf.keras.optimizers.Adam(learning_rate=rate)
 
 for epoch in range(epochs):
     total_loss = 0
@@ -105,6 +133,11 @@ for epoch in range(epochs):
                 y_pre
             )
             
+        training_variables = [
+            w1,w2,w3,w4,w5,
+            b1,b2,b3,b4,b5 
+        ]+ conv32.trainable_variables + conv64.trainable_variables
+            
         gradients = tape.gradient(
             loss,
             training_variables
@@ -115,7 +148,7 @@ for epoch in range(epochs):
         )
         
         pred = tf.cast(
-            tf.argmax(y_pre,axis=1),
+            tf.argmax(y_pre,axis=1,),
             tf.float32
         )
         correct += tf.reduce_sum(
@@ -147,7 +180,7 @@ for x_batch, y_batch in test_datasets:
     )
         
     pred = tf.cast(
-        tf.argmax(y_pre,axis=1),
+        tf.argmax(y_pre,axis=1,),
         tf.float32
     )
     correct += tf.reduce_sum(
