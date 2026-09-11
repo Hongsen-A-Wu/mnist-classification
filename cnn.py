@@ -20,12 +20,12 @@ x_test = x_test.astype(np.float32)/255.0
 x_train = tf.expand_dims(x_train,-1)
 x_test = tf.expand_dims(x_test,-1)
 
-y_train = y_train.astype(np.float32)
-y_test = y_test.astype(np.float32)
+y_train = tf.cast(y_train,tf.float32)
+y_test = tf.cast(y_test,tf.float32)
 
 # Hyperparameters
 batch_size = 32
-epochs = 4
+epochs = 2
 rate = 0.001
 
 # Create tensorflow datasets
@@ -48,7 +48,7 @@ conv32 = tf.keras.layers.Conv2D(
 
 pool1 = tf.keras.layers.MaxPooling2D(
     pool_size = 2
-) #(32,14,14,32)
+) #(32,14,14,32), reduce the feature map, and keep the most important feature
 
 conv64 = tf.keras.layers.Conv2D(
     filters = 64,
@@ -133,10 +133,12 @@ for epoch in range(epochs):
                 y_pre
             )
             
-        training_variables = [
-            w1,w2,w3,w4,w5,
-            b1,b2,b3,b4,b5 
-        ]+ conv32.trainable_variables + conv64.trainable_variables
+        training_variables = (
+            [w1,w2,w3,w4,w5,
+            b1,b2,b3,b4,b5 ]
+            +conv32.trainable_variables 
+            +conv64.trainable_variables
+        )
             
         gradients = tape.gradient(
             loss,

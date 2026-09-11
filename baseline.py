@@ -1,9 +1,8 @@
 """
-Epoch: 1 Loss: 0.21745962 Accuracy: 0.93361664
-Epoch: 2 Loss: 0.09494804 Accuracy: 0.97066665
-Epoch: 3 Loss: 0.07050682 Accuracy: 0.97861665
-Epoch: 4 Loss: 0.055484433 Accuracy: 0.98263335
-Loss: 0.08945641 Accuracy: 0.9737
+Epoch: 1 Loss: 0.21344085 Accuracy: 0.9338667
+Epoch: 2 Loss: 0.09374509 Accuracy: 0.97108334
+Epoch: 3 Loss: 0.068478525 Accuracy: 0.97945
+Loss: 0.0838993 Accuracy: 0.9768
 """
 
 import tensorflow as tf
@@ -12,7 +11,8 @@ import numpy as np
 # Load MNIST dataset, get x_train.shape = (60000,28,28), x_train.dtype = uint8, pixel: 0~255
 (x_train,y_train),(x_test,y_test) = tf.keras.datasets.mnist.load_data()
 
-# Convert pixel value from 0~255 to 0~1
+# Convert pixel value from 0~255 to 0~1. 
+# Normalization. The input scale influence the gradient, if the scale is large, the change of parameters is more rapid
 x_train = x_train.astype(np.float32)/255.0
 x_test = x_test.astype(np.float32)/255.0
 
@@ -21,8 +21,8 @@ flatten = tf.keras.layers.Flatten()
 x_train = flatten(x_train)
 x_test = flatten(x_test)
 
-y_train = y_train.astype(np.float32)
-y_test = y_test.astype(np.float32)
+y_train = tf.cast(y_train,tf.float32)
+y_test = tf.cast(y_test,tf.float32)
 
 # Define batch size
 batch_size = 32
@@ -79,13 +79,14 @@ def forward(x):
     return y_pre
     
 # Loss function
+# Use SpareCategoricalCrossentropy since there are more than two outcomes
 loss_fn = tf.keras.losses.SparseCategoricalCrossentropy()
 
 # Optimizer
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
 # Training
-epochs = 4
+epochs = 3
 
 training_variables = [
     w1,w2,w3,w4,w5,
@@ -93,7 +94,7 @@ training_variables = [
 ]
 
 for epoch in range(epochs):
-    total_loss = 0
+    total_loss = 0.0
     correct = 0
     total = 0
     
@@ -134,7 +135,7 @@ for epoch in range(epochs):
     
 # Test model
 
-test_loss = 0
+test_loss = 0.0
 correct = 0
 total = 0
 
